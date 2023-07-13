@@ -56,7 +56,7 @@ UART_HandleTypeDef huart2;
 PCD_HandleTypeDef hpcd_USB_FS;
 
 /* USER CODE BEGIN PV */
-typedef enum {MAIN = 1, LED, SECURITY, SLEEP, SENARIO, TEMPRETURE} states;
+typedef enum {MAIN = 1, LED, SECURITY, SLEEP, SENARIO, TEMPRETURE,OUT,PARTY,PIR} states;
 int cFlag = 1;
 state = MAIN;
 unsigned char str[1];
@@ -100,7 +100,7 @@ void buzzerInit() {
 	buzzerPwmChannel = TIM_CHANNEL_3;
 	HAL_TIM_PWM_Start(buzzerPwmTimer, buzzerPwmChannel);
 }
-
+//
 void buzzerChangeTone(uint16_t freq, uint16_t volume) {
 	if (freq == 0 || freq > 20000) {
 		__HAL_TIM_SET_COMPARE(buzzerPwmTimer, buzzerPwmChannel, 0);
@@ -159,9 +159,10 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
 
-	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
+
 	LiquidCrystal(GPIOD, GPIO_PIN_8, GPIO_PIN_9, GPIO_PIN_10, GPIO_PIN_11,
 	GPIO_PIN_12, GPIO_PIN_13, GPIO_PIN_14);
+	begin(20, 4);
 //	clear();
 //	print("Hello, World!");
 //	HAL_Delay(1000);
@@ -169,9 +170,11 @@ int main(void)
 //	print("hey");
 	HAL_TIM_Base_Start_IT(&htim2);
 	HAL_TIM_Base_Start_IT(&htim3);
-	HAL_TIM_Base_Start_IT(&htim4);
-	buzzerInit();
+//	HAL_TIM_Base_Start_IT(&htim4);
 
+	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
+	buzzerInit();
+//	buzzerChangeTone(100, 10);
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7,
 			1);
 
@@ -497,7 +500,6 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 0 */
 
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
   TIM_OC_InitTypeDef sConfigOC = {0};
 
@@ -510,15 +512,6 @@ static void MX_TIM4_Init(void)
   htim4.Init.Period = 65535;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
   if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
   {
     Error_Handler();
@@ -654,14 +647,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : B1_Pin */
-  GPIO_InitStruct.Pin = B1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PA4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4;
+  /*Configure GPIO pins : PA0 PA4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -690,7 +677,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
@@ -699,10 +689,14 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+char enter[1]="Hi";
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if (huart->Instance == USART2) {
 
 		HAL_UART_Receive_IT(&huart2, str, sizeof(str));
+		//HAL_UART_Transmit(&huart2, enter, sizeof(enter), 1000);
+		//HAL_UART_Receive_IT(&huart2, enter, sizeof(enter));
+
 	}
 }
 uint8_t temp_x0 = 0;
@@ -718,7 +712,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 		fx = ((float) x * 330 / 4095);
 		unsigned char data[100] = "SALAM";
 		int n = sprintf(data, "%d  %.4f\n", x, fx);
-		HAL_UART_Transmit(&huart2, data, n, 1000);
+		//HAL_UART_Transmit(&huart2, data, n, 1000);
 
 //    		if(HAL_GetTick() - last < 200){
 //    		    	 			 return ;
@@ -726,7 +720,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 //    		    	 			x=HAL_ADC_GetValue(&hadc1);
 //    		    	 		 }
 //    		HAL_Delay(10);
-//    		HAL_ADC_Start_IT(&hadc1);
+    		HAL_ADC_Start_IT(&hadc1);
 //    		last = HAL_GetTick();
 
 	}
@@ -741,11 +735,58 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 //
 //    }
 //}
+int led8=0;
+int led9=0;
+int led11=0;
+int led12=0;
+int melodyt=0;
+float lastfx = 0;
+int temp_treshold=30;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 //	static int counter = 0;
-    if (htim->Instance == TIM3)
+	static int timer = 0;
+
+	if (htim->Instance == TIM2){
+		melodyt+=1;
+		if (state == SLEEP){
+			Sleep_melody();
+		}
+
+		 // HAL_UART_Transmit(&huart2, enter, sizeof(enter ), 1000);
+		    //
+//			if (timer==20){
+//				setADC_value();
+//			    displyLCD();
+//				HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_13);
+//				timer=0;
+//
+//			}
+//		    timer++;
+//			if (lastfx > 30) {
+//			setCursor(10, 1);
+//			print("Warning !!");
+//			buzzerChangeTone(300, 50);
+//
+//			} else {
+//	//		if (cFlag)
+//			setCursor(10, 1);
+//			print("          ");
+//			buzzerChangeTone(0, 50);
+//			}
+//			lastfx = fx;
+
+	}
+	else if (htim->Instance == TIM3)
     {
+		if (timer==15){
+			setADC_value();
+		    displyLCD();
+			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_13);
+			timer=0;
+
+		}
+	    timer++;
     	if(state == MAIN){
 //    		if (counter == 100){
     		if(cFlag){
@@ -760,18 +801,86 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     		if (cFlag){
     			clear();
     			print(" LED :)");
-    			setCursor(1, 0);
+    			setCursor(0, 1);
+    			print("1.Led8    2.Led9    3.Led11   4.Led12");
+
 
     		}
     	}
-//    	counter++;
+    	else if(state == SECURITY){
+    		if (cFlag){
+    			clear();
+    			print(" Security *");
+    			buzzerChangeTone(0, 50);
+    			setCursor(3, 1);
+    			print("PIR Alarm");
+    		}
+    	}
+    	else if(state == SLEEP){
+    		if (cFlag){
+    			clear();
+    			buzzerChangeTone(0, 0);
+    			setCursor(5, 3);
+    			print(" SLEEP ");
+
+    		}
+    	}
+    	else if(state == SENARIO){
+    		if (cFlag){
+    			clear();
+    			print("Choose Senario");
+    			setCursor(0, 1);
+    			print("11:Go out           12:Party");
+
+    		}
+    	}
+    	else if(state == TEMPRETURE){
+    		if (cFlag){
+    			clear();
+    			print("Temperature");
+    			//setADC_value();
+    			char dis[20];
+    			sprintf(dis, "%.2f", fx);
+    			setCursor(1, 1);
+    			print(dis);
+
+
+    		}
+    	}
+    	else if(state == OUT){
+    		if (cFlag){
+    			setCursor(0, 1);
+    			print("11:Go out <<");
+    			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_All, 0);
+
+
+    		}
+    	}
+    	else if(state == PARTY){
+    		if (cFlag){
+    			setCursor(0, 3);
+    			print("12:Party <<");
+    			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_All);
+
+
+    		}
+    	}
+    	else if(state == PIR){
+    		if (cFlag){
+    			//clear();
+    			buzzerChangeTone(0, 50);
+    			setCursor(3, 2);
+    			print("SET PIR");
+    		}
+    	}
+    	cFlag = 0;
     }
 }
 uint8_t temp;
-float lastfx = 0;
+
 
 extern void setADC_value() {
-	int x = HAL_ADC_GetValue(&hadc1);
+//	 x = HAL_ADC_GetValue(&hadc1);
 //	    		float fx=((float)x*100/4095);
 //	    		unsigned char data[100]="SALAM";
 //
@@ -785,42 +894,58 @@ extern void setADC_value() {
 	HAL_ADC_Start_IT(&hadc1);
 
 }
-void displyLCD() {
+extern void displyLCD() {
 
-	char dis[20];
-
-	sprintf(dis, "%.4f", fx);
-	if (lastfx > 30) {
+    if(state ==TEMPRETURE){
+    	char dis[20];
+    	sprintf(dis, "%.2f", fx);
+    	setCursor(1, 1);
+    	print(dis);
+		setCursor(10, 1);
+		print("          ");
+    }
+	if (lastfx > 40) {
 		setCursor(10, 1);
 		print("Warning !!");
-		buzzerChangeTone(300, 50);
+		buzzerChangeTone(140, 50);
 
 	} else {
 //		if (cFlag)
 		setCursor(10, 1);
-		print("          ");
+//		print("          ");
 		buzzerChangeTone(0, 50);
 	}
-	setCursor(1, 1);
-	print(dis);
 	lastfx = fx;
+
 
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	static uint32_t deb = 0;
-	if (GPIO_Pin == GPIO_PIN_4)
+
+	  if (GPIO_Pin == GPIO_PIN_0){
+		  state=4;
+		  cFlag=1;
+
+	  }
+	  else if (GPIO_Pin == GPIO_PIN_4)
 	    {
 
 	        if (HAL_GetTick() - deb > 200){
-	        	HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_12);
-	        }
+	        	if(state==PIR){
+		        	HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_13);
+		        	buzzerChangeTone(88, 50);
+		        	state=3;
+		        	cFlag=1;
+	        	}
+            }
 	        deb = HAL_GetTick();
 	    }
-	else if (last_gpio_exti + 200 < HAL_GetTick()) // Simple button debouncing
+	  else if (last_gpio_exti + 200 < HAL_GetTick()) // Simple button debouncing
 			{
-		HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_8);
+
 		last_gpio_exti = HAL_GetTick();
+		//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_8);
 
 		int8_t row_number = -1;
 		int8_t column_number = -1;
@@ -834,6 +959,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 				{
 			if (GPIO_Pin == Row_pins[row]) {
 				row_number = row;
+
 
 			}
 		}
@@ -872,11 +998,17 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		// +----+----+----+----+
 		const uint8_t button_number = row_number * 4 + column_number + 1;
 		switch (button_number) {
+
 		case 1:
 			/* code */
 			passwd[digitNo] = '1';
 			digitNo += 1;
-			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			if(state==LED){
+				led8=1-led8;
+				HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, led8);
+				HAL_UART_Transmit(&huart2, "LED 8", 15, 1000);
+			}
 
 			break;
 		case 2:
@@ -887,31 +1019,65 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 			if(state==MAIN){
 				state=2;
 				cFlag = 1;
+				HAL_UART_Transmit(&huart2, "chose LED", sizeof("chose LED"), 1000);
+			}
+			else if(state==LED){
+				led9=1-led9;
+				HAL_GPIO_WritePin(GPIOE, GPIO_PIN_9, led9);
+				HAL_UART_Transmit(&huart2, "LED 9", 15, 1000);
 			}
 			break;
 		case 3:
 			/* code */
 			passwd[digitNo] = '3';
 			digitNo += 1;
-			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			if(state==MAIN){
+				state=3;
+				cFlag = 1;
+			}else if(state==LED){
+				led11=1-led11;
+				HAL_GPIO_WritePin(GPIOE, GPIO_PIN_11, led11);
+				HAL_UART_Transmit(&huart2, "LED 11", sizeof("LED 11"), 1000);
+			}
 			break;
 		case 4:
 			/* code */
 			passwd[digitNo] = '4';
 			digitNo += 1;
-			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			if(state==MAIN){
+				state=4;
+				cFlag = 1;
+				Sleep_melody();
+			}else if(state==LED){
+				led12=1-led12;
+				HAL_GPIO_WritePin(GPIOE, GPIO_PIN_12, led12);
+				HAL_UART_Transmit(&huart2, "LED 12", sizeof("LED 12"), 1000);
+
+			}
 			break;
 		case 5:
 			/* code */
 			passwd[digitNo] = '5';
 			digitNo += 1;
 			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			if(state==MAIN){
+				state=5;
+				cFlag = 1;
+				HAL_UART_Transmit(&huart2, "Chose senario ", 15, 1000);
+			}
 			break;
 		case 6:
 			/* code */
 			passwd[digitNo] = '6';
 			digitNo += 1;
 			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			if(state==MAIN){
+				state=6;
+				cFlag = 1;
+				HAL_UART_Transmit(&huart2, "show temperature", 15, 1000);
+			}
 			break;
 		case 7:
 			/* code */
@@ -930,28 +1096,65 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 			passwd[digitNo] = '9';
 			digitNo += 1;
 			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			if(state==MAIN){
+				state=9;
+				cFlag = 1;
+				HAL_UART_Transmit(&huart2, "PIR Set ", sizeof("chose LED"), 1000);
+			}
 			break;
 		case 10:
 			/* code */
 			passwd[digitNo] = '0';
 			digitNo += 1;
 			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+
+
+			}
 			break;
 		case 11:
 			/* code */
-			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			//setCursor(0, 1);
+			if(state==SENARIO || state==PARTY ){
+				state=7;
+				cFlag=1;
+				HAL_UART_Transmit(&huart2, "senario Go out", sizeof("senario Go out"), 1000);
+
+
+			}
 			break;
 		case 12:
 			/* code */
-			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			//HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			if(state==SENARIO || state==PARTY || state==OUT){
+				state=8;
+				cFlag=1;
+				HAL_UART_Transmit(&huart2, "senario Party", sizeof("senario Party"), 1000);
+
+			}
 			break;
 		case 13:
 			/* code */
 			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			if(state==TEMPRETURE){
+				state=6;
+				cFlag = 1;
+				HAL_UART_Transmit(&huart2, "Set Threshold temperature", 15, 1000);
+				temp_treshold+=1;
+				HAL_UART_Transmit(&huart2, "increase Threshold temperature", 15, 1000);
+			}
+
 			break;
 		case 14:
 			/* code */
 			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+			if(state==TEMPRETURE){
+							state=6;
+							cFlag = 1;
+							HAL_UART_Transmit(&huart2, "Set Threshold temperature", 15, 1000);
+							temp_treshold-=1;
+							HAL_UART_Transmit(&huart2, "decrease Threshold temperature", 15, 1000);
+			}
 			break;
 		case 15:
 			/* code */
@@ -962,11 +1165,25 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
 			state = 1;
 			cFlag = 1;
+			HAL_UART_Transmit(&huart2, "Back Main Home", 15, 1000);
 			break;
 
 		default:
 			break;
 		}
+	}
+}
+void Sleep_melody(){
+	if (melodyt % 3 ==0 ){
+	  buzzerChangeTone(33, 50);
+	}
+	//HAL_Delay(200);
+	else if(melodyt % 3 ==1 ){
+	buzzerChangeTone(123, 50);
+	}
+	//HAL_Delay(150);
+	else if(melodyt % 3 ==2 ){
+	buzzerChangeTone(87, 50);
 	}
 }
 
